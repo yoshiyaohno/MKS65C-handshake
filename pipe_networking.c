@@ -11,7 +11,7 @@
   returns the file descriptor for the upstream pipe.
   =========================*/
 int server_handshake(int *to_client) {
-  return 0;
+    return 0;
 }
 
 
@@ -25,5 +25,5 @@ int server_handshake(int *to_client) {
   returns the file descriptor for the downstream pipe.
   =========================*/
 int client_handshake(int *to_server) {
-  return 0;
+    return 0;
 }
