@@ -15,7 +15,9 @@
   returns the file descriptor for the upstream pipe.
   =========================*/
 int server_handshake(int *to_client) {
-    int read_result;
+    int result, from_client;
+
+    printf("[SERVER]\tCreating public pipe....\n");
 
     if(mkfifo("jeff", 0755)) {
         printf("[SERVER]\tError creating public pipe:\n\t%s\n\n",
@@ -31,21 +33,62 @@ int server_handshake(int *to_client) {
         exit(1);
     }
 
+    // BEGIN HANDSHAKE //
+
     // part 1: client sends downstream pipe
     char down_name[PIPELEN];
-    read_result = read(public_pipe, down_name, PIPELEN - 1);
-    if(read_result == -1) {
+    result = read(public_pipe, down_name, PIPELEN - 1);
+    if(result == -1) {
         printf("[SERVER]\tError reading downstream pipe name:\n\t%s\n\n",
                     strerror(errno));
         exit(1);
     }
-    down_name[read_result + 1] = '\0';
+    down_name[result + 1] = '\0';
 
-    // part 2: open downstream pipe and send upstream pipe
-    *to_client = open(down_name, O_WRONLY);
-    char up_name[PIPELEN];
+    // part 2: close public pipe, open downstream pipe and send upstream pipe
+    close(public_pipe);
+    result = (*to_client = open(down_name, O_WRONLY));
+    if(result == -1) {
+        printf("[SERVER]\tError opening downstream pipe:\n\t%s\n\n",
+                    strerror(errno));
+        exit(1);
+    }
+
+    char up_name[PIPELEN] = "upstroof";
+    if(mkfifo(up_name, 0755)) {
+        printf("[SERVER]\tError creating upstream pipe:\n\t%s\n\n",
+                    strerror(errno));
+        exit(1);
+    }
+
+    result = (from_client = open(up_name, 0755));
+    if(result == -1) {
+        printf("[SERVER]\tError opening upstream pipe:\n\t%s\n\n",
+                    strerror(errno));
+        exit(1);
+    }
+
+    result = write(*to_client, up_name, PIPELEN - 1);
+    if(result == -1) {
+        printf("[SERVER]\tError sending upstream pipe name:\n\t%s\n\n",
+                    strerror(errno));
+        exit(1);
+    }
 
     // part 3: confirm upstream pipe
+    char confirm[PIPELEN];
+    result = read(up_pipe, confirm, PIPELEN - 1);
+    if(result == -1) {
+        printf("[SERVER]\tError reading confirmation:\n\t%s\n\n",
+                    strerror(errno));
+        exit(1);
+    }
+
+    if(!strcmp(confirm, CONFIRM)) {
+        printf("[SERVER]\tConfirmation successful. Handshake complete.\n");
+    }
+    
+
     return 0;
 }
 
